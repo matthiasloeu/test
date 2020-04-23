@@ -1,0 +1,294 @@
+{
+  "openapi" : "3.0.0",
+  "info" : {
+    "title" : "LEGIC Trusted Service API",
+    "description" : "Public API of the LEGIC Trusted service, API Level V3 and above\n",
+    "contact" : {
+      "email" : "support@legic.com"
+    },
+    "version" : "8.0.0.1"
+  },
+  "externalDocs" : {
+    "description" : "API definitions can be found on the LEGIC Extranet",
+    "url" : "https://www.legic.com/extranet"
+  },
+  "servers" : [ {
+    "url" : "https://virtserver.swaggerhub.com/legicconnectuser/legicconnect/8.0.0",
+    "description" : "SwaggerHub API Auto Mocking"
+  }, {
+    "url" : "https://dev-uat.legicconnect.io/public/v8",
+    "description" : "dev-uat Development Server"
+  }, {
+    "url" : "https://integration.legicconnect.com/public/v8",
+    "description" : "Integration server"
+  } ],
+  "security" : [ {
+    "basicAuth" : [ ]
+  }, {
+    "apiKey" : [ ]
+  } ],
+  "tags" : [ {
+    "name" : "EventSystem",
+    "description" : "LEGIC Connect also includes an eventsystem, which can be used to subscribe to certain events and subsequently receive all events for a specific subscription.\n\nThis allows a customer backend system to ensure it is always up to date and to refresh its data based on these events. Events may carry additional detail data, which is held in a string value that complies with a variable JSON format. This means that clients can parse and use this data, but cannot rely on the format remaining stable over coming LEGIC Connect releases where additional data might be added.\n"
+  } ],
+  "paths" : {
+    "/SubscribeToEvents" : {
+      "post" : {
+        "tags" : [ "EventSystem" ],
+        "summary" : "Subscribe to events for given parameters",
+        "description" : "This call is used to subscribe to public events from LEGIC Connect. The event subscription can be further customized to restrict the events returned to specific event scopes, objects or event types.\n\nConditions\n\n- This call is only supported as a synchronous call.\n\n- Any user of the according company can subscribe to events, receiving events is restricted based on user and project rights needed to receive specific event types.\n\n- If the subscription contains a valid callbackURL then the subscription is valid without limit. Otherwise it will be removed if no getEvent calls from a customer arrives within 2 weeks or maxAge parameter.\n\nNotes\n\n- *scopedObjectId* can be left empty;\n\n  - In case of *scope* `company`, this defaults to the company to which the authenticated user belongs.\n\n  - In case of *scope* `project`, this defaults to the authenticated user's project (works only for API users).\n\n- If a webhook is specified and the target address cannot be reached for some time, then LEGIC Connect will retry calling that address using exponential backoff until retry intervals reach 30 minutes. It will retry for up to 3 days, and if there is still no valid answer received within this period, the subscription is cancelled.\n\nError Codes\n\n| Code | Description |\n| ----------- | ----------- |\n| 42100\t| No valid RoutingKey found |\n| 42104\t| Provided callbackURL was not reachable or did not return successfully. |\n| 42106\t| Cannot subscribe for this object scope (does not exist or no rights for it). |\n",
+        "operationId" : "subscribeToEvents",
+        "requestBody" : {
+          "$ref" : "#/components/requestBodies/SubscribeToEventsRequest"
+        },
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubscribeToEventsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Status" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "description" : "Status information which indicates the outcome of the call\n",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Code"
+            }, {
+              "$ref" : "#/components/schemas/Description"
+            } ]
+          }
+        }
+      },
+      "Code" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "maximum" : 89999,
+            "minimum" : 20000,
+            "type" : "integer",
+            "description" : "Five digit statuscode: 2xxxx = success, 4xxxx = warning, 6xxxx = error, 8xxxx = fatal\n",
+            "format" : "int32",
+            "example" : 26000
+          }
+        }
+      },
+      "Description" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string",
+            "description" : "Status description\n",
+            "example" : "OK"
+          }
+        }
+      },
+      "RequestId" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "type" : "string",
+            "description" : "Unique value for this request.\n",
+            "example" : "CorrId_6032419301521724218_22366"
+          }
+        }
+      },
+      "Scope" : {
+        "type" : "object",
+        "properties" : {
+          "scope" : {
+            "type" : "string",
+            "description" : "Filters the list of returned events to the specified scope. Possible values are project, company & mobileApp\n",
+            "example" : "project"
+          }
+        }
+      },
+      "ScopedObjectId" : {
+        "type" : "object",
+        "properties" : {
+          "scopedObjectId" : {
+            "type" : "string",
+            "description" : "The ID of the project, company or mobile app the returned events should belong to. Returned events are automatically restricted to the objects available to the API user executing this call.\n\nIf field is missing then the information is searched in the current user context\n",
+            "example" : "52585145"
+          }
+        }
+      },
+      "RoutingKey" : {
+        "type" : "object",
+        "properties" : {
+          "routingKey" : {
+            "type" : "array",
+            "description" : "A routing key pattern in the form eventName.changeType further filters the returned events. Wildcards ( * ) are permitted both for event name and change type (e.g. `ProvisionedFileChange.*`, `*.CREATE`, `*.*`).\n",
+            "items" : {
+              "type" : "string",
+              "example" : "ProvisionedFileChange.*"
+            }
+          }
+        }
+      },
+      "MaxBatchSize" : {
+        "type" : "object",
+        "properties" : {
+          "maxBatchSize" : {
+            "type" : "integer",
+            "description" : "An optional limitation of the approximate maximum size of payload in bytes to be submitted with one getEvents or callback request in bytes. This is an approximate value, responses may be slightly larger. Default value is 10,000 bytes. If more events are available than fit in maxBatchSize, then multiple getEvents must be issued or multiple callback requests will be triggered.\n\nFrom v2.6.x.x onwards, the default value is 1,000,000 bytes.\n",
+            "format" : "int32",
+            "example" : 1000000
+          }
+        }
+      },
+      "MaxAge" : {
+        "type" : "object",
+        "properties" : {
+          "maxAge" : {
+            "type" : "integer",
+            "description" : "An optional limitation of the maximum lifetime of the subscription in seconds. Any value of 604800 or below can be set.\n\nOmitting this parameter defaults to 604800 (two weeks). If events which are older than maxAge have not been consumed by clients, then the subscription becomes invalid.\n",
+            "format" : "int32",
+            "example" : 604800
+          }
+        }
+      },
+      "WebHook" : {
+        "type" : "object",
+        "properties" : {
+          "webhook" : {
+            "description" : "If provided, registers a web hook where events are pushed to a provided URL instead of getEvents being used\n",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/CallbackURL"
+            } ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/HttpHeader"
+            }, {
+              "$ref" : "#/components/schemas/MinMsDelayBetweenCalls"
+            } ]
+          }
+        }
+      },
+      "CallbackURL" : {
+        "type" : "object",
+        "properties" : {
+          "callbackURL" : {
+            "type" : "string",
+            "description" : "URL and protocol to call with a POST request when an event occurs. Valid protocols are https only. It is allowed to add path information and parameters. An example would be `https://myapp.com/callback?magicItem=2&source=5`. It is required that the URL will return with an HTTP-Statuscode 200 or 201 with an empty payload.\n\nWhen LEGIC Connect sends callback requests, it will include a HTTP header `eventSubscriptionId: xxxxxxxxxx`, where xxxxxxxxx is the eventSubscriptionId.\n\nLEGIC Connect will send an empty callback request to the URL which does not include any events. Only if the call is answered correctly with HTTP-Statuscode 200 or 201 with an empty payload then the subscription is considered valid. Otherwise, an error is returned to the caller.\n",
+            "example" : "https://myapp.com/callback?magicItem=2&source=5"
+          }
+        }
+      },
+      "HttpHeader" : {
+        "type" : "object",
+        "properties" : {
+          "httpHeader" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "description" : "Optional HTTP headers to include in callback requests. It must have the form &lt;key&gt;:&lt;value&gt; and can be used e.g. as Basic Authentication header. An example would be `Authorization: Basic dXNlcjpwYXNzd29yZA==`\n\nAdditionally, you can overwrite certain default headers with custom values like `User-Agent`. Others, like `eventSubscriptionId` or `Content-Length` cannot be owerwritten.\n",
+              "example" : "Authorization: Basic dXNlcjpwYXNzd29yZA=="
+            }
+          }
+        }
+      },
+      "MinMsDelayBetweenCalls" : {
+        "type" : "object",
+        "properties" : {
+          "minMsDelayBetweenCalls" : {
+            "type" : "integer",
+            "description" : "Minimum amount of milliseconds to wait between sending callbacks. The default value is 100ms. If multiple events are emitted very quickly, then the first event may be pushed immediately and the others after *minMsDelayBetweenCalls*. This acts as a rate limiting and combines multiple events which are queued until the next batch of events can be sent out.\n",
+            "format" : "int32",
+            "example" : 100
+          }
+        }
+      },
+      "CustomerSubscriptionName" : {
+        "type" : "object",
+        "properties" : {
+          "customerSubscriptionName" : {
+            "type" : "string",
+            "description" : "Customer defined name for the event webhook subscription. May be used to identify the subsciption in other calls (list, update and cancel). If a webhook event subscription with the same name for the user already exists an update is done. This update leads to a new generated event subscription which bases on the old one related to which events where already sent. It is possible that some events then are sent twice. But they can be filtered by the eventId.\n\nDepending on how many subscriptions exist, the response might take a while to arrive.\n",
+            "example" : "mySubscriptionName"
+          }
+        }
+      },
+      "EventSubscriptionId" : {
+        "type" : "object",
+        "properties" : {
+          "eventSubscriptionId" : {
+            "type" : "string",
+            "description" : "This ID can be used to request events through the `GetEvents` method. In case on callbackURL is defined the subscription will time out if no `GetEvents` request with the corresponding subscriptionId is made for subscribed events for duration of the time out limit (2 weeks or less if configured by maxAge). \n",
+            "example" : "ES_189a7910-37fc-485c-9eff-aa3ada6a9744-776997674"
+          }
+        }
+      },
+      "SubscribeToEventsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "$ref" : "#/components/schemas/RequestId"
+          },
+          "subscribeToEventsResponse" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Status"
+            } ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/EventSubscriptionId"
+            } ]
+          }
+        }
+      }
+    },
+    "requestBodies" : {
+      "SubscribeToEventsRequest" : {
+        "description" : "Request container",
+        "content" : {
+          "application/json" : {
+            "schema" : {
+              "type" : "object",
+              "properties" : {
+                "subscribeToEventsRequest" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/Scope"
+                  }, {
+                    "$ref" : "#/components/schemas/RoutingKey"
+                  } ],
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/ScopedObjectId"
+                  }, {
+                    "$ref" : "#/components/schemas/MaxBatchSize"
+                  }, {
+                    "$ref" : "#/components/schemas/MaxAge"
+                  }, {
+                    "$ref" : "#/components/schemas/WebHook"
+                  }, {
+                    "$ref" : "#/components/schemas/CustomerSubscriptionName"
+                  } ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "description" : "bla",
+        "scheme" : "basic"
+      },
+      "apiKey" : {
+        "type" : "apiKey",
+        "name" : "APIKEY",
+        "in" : "header"
+      }
+    }
+  }
+}
